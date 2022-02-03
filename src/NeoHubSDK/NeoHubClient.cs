@@ -8,6 +8,11 @@ namespace Heatmiser.NeoHubSDK
 
         private readonly INeoTcpClient tcpClient;
 
+        private LiveData? _liveData;
+        private IDictionary<string, DeviceInfo> engineersData = new Dictionary<string, DeviceInfo>(0);
+        private DateTime engineersDataTimestamp;
+        private readonly SemaphoreSlim dataLock = new(1, 1);
+
         public NeoHubClient() : this(DefaultHostName)
         {
         }
@@ -23,6 +28,70 @@ namespace Heatmiser.NeoHubSDK
 
         private JsonSerializerOptions SerializerOptions { get; }
 
+        private async Task<LiveData> GetLiveData()
+        {
+            if (_liveData == null)
+            {
+                try
+                {
+                    await dataLock.WaitAsync();
+                    if (_liveData == null)
+                    {
+                        ReadOnlyMemory<byte> data = await tcpClient.InvokeCommandAsync(NeoCommands.GET_LIVE_DATA);
+
+                        _liveData = JsonSerializer.Deserialize<LiveData>(data.Span, SerializerOptions);
+                        if (_liveData is null)
+                        {
+                            throw new Exception("Unable to retrieve live data.");
+                        }
+                    }
+                }
+                finally
+                {
+                    dataLock.Release();
+                }
+            }
+            return _liveData;
+        }
+
+        private async Task<IDictionary<string, DeviceInfo>> GetDeviceInfo()
+        {
+            LiveData liveData = await GetLiveData();
+            if (engineersData == null || engineersDataTimestamp < liveData.EngineersTimestamp)
+            {
+                try
+                {
+                    await dataLock.WaitAsync();
+                    if (engineersData == null || engineersDataTimestamp < liveData.EngineersTimestamp)
+                    {
+                        ReadOnlyMemory<byte> data = await tcpClient.InvokeCommandAsync(NeoCommands.GET_ENGINEERS);
+
+                        var obj = JsonDocument.Parse(data);
+
+                        var devices = obj.RootElement.EnumerateObject()
+                        .Select(prop =>
+                        {
+                            DeviceInfo? device = prop.Value.Deserialize<DeviceInfo>(SerializerOptions);
+                            if (device is null)
+                            {
+                                throw new InvalidOperationException($"The device {prop.Name} info could not be parsed.");
+                            }
+                            return (prop.Name, device);
+                        })
+                        .Select(d => new KeyValuePair<string, DeviceInfo>(d.Name, d.device));
+
+                        engineersData = new Dictionary<string, DeviceInfo>(devices);
+                        engineersDataTimestamp = liveData.EngineersTimestamp;
+                    }
+                }
+                finally
+                {
+                    dataLock.Release();
+                }
+            }
+            return engineersData;
+        }
+
         public async Task<NeoHubInfo?> GetHubInfo()
         {
             ReadOnlyMemory<byte> data = await tcpClient.InvokeCommandAsync(NeoCommands.GET_SYSTEM);
@@ -30,35 +99,42 @@ namespace Heatmiser.NeoHubSDK
             return JsonSerializer.Deserialize<NeoHubInfo>(data.Span, SerializerOptions);
         }
 
-        public async Task<LiveData?> GetLiveData()
+        public async Task<IDictionary<string, NeoPlug>> GetNeoPlugs()
         {
-            ReadOnlyMemory<byte> data = await tcpClient.InvokeCommandAsync(NeoCommands.GET_LIVE_DATA);
+            var liveData = await GetLiveData();
+            var devices = await GetDeviceInfo();
 
-            return JsonSerializer.Deserialize<LiveData>(data.Span, SerializerOptions);
+            var plugs = devices
+            .Where(kv => kv.Value.DeviceType == DeviceType.NeoPlug)
+            .Select(kv => new KeyValuePair<string, NeoPlug>(kv.Key, new(tcpClient, kv.Key, kv.Value, GetDeviceLiveData(liveData, kv.Value.DeviceId))));
+
+            return new Dictionary<string, NeoPlug>(plugs);
         }
 
-        public async Task<IEnumerable<DeviceInfo?>> GetDeviceInfo()
+        public async Task<IDictionary<string, NeoStat>> GetNeoStats()
         {
-            ReadOnlyMemory<byte> data = await tcpClient.InvokeCommandAsync(NeoCommands.GET_ENGINEERS);
+            var liveData = await GetLiveData();
+            var devices = await GetDeviceInfo();
 
-            var obj = JsonDocument.Parse(data);
-
-            return obj.RootElement.EnumerateObject().Select(prop => {
-                DeviceInfo? device = prop.Value.Deserialize<DeviceInfo>(SerializerOptions);
-                if (device != null)
-                {
-                    device.Name = prop.Name;
-                }
-                return device;
+            var stats = devices
+            .Where(kv => kv.Value.DeviceType == DeviceType.NeoStatV1 || kv.Value.DeviceType == DeviceType.NeoStatV2)
+            .Select(kv =>
+            {
+                return new KeyValuePair<string, NeoStat>(kv.Key, new(tcpClient, kv.Key, kv.Value, GetDeviceLiveData(liveData, kv.Value.DeviceId)));
             });
+
+            return new Dictionary<string, NeoStat>(stats);
         }
+
+        private static LiveDeviceData GetDeviceLiveData(LiveData data, int deviceId) => data.Devices.Where(d => d.DeviceId == deviceId).First();
+
 
         public async Task<IDictionary<int, string>> GetZones()
         {
             ReadOnlyMemory<byte> data = await tcpClient.InvokeCommandAsync(NeoCommands.GET_ZONES);
             var obj = JsonDocument.Parse(data);
 
-            return new Dictionary<int,string>(obj.RootElement.EnumerateObject().Select(prop => new KeyValuePair<int, string>(prop.Value.GetInt32(), prop.Name)));
+            return new Dictionary<int, string>(obj.RootElement.EnumerateObject().Select(prop => new KeyValuePair<int, string>(prop.Value.GetInt32(), prop.Name)));
         }
 
         public async Task<IDictionary<string, EngineerData?>> GetEngineersData()

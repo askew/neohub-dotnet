@@ -8,67 +8,55 @@ namespace Heatmiser.NeoHubSDK
     /// </summary>
     public record DeviceInfo
     {
-        [JsonConstructor]
-        public DeviceInfo(int deadband, int deviceId, DeviceType deviceType, int floorLimit, float frostTemperature,
-            int maxPreheat, int outputDelay, int pumpDelay, string? rFSensorMode, int thermostatFailsafe, int thermostatVersion, int switchingDifferential,
-            int switchDelay, int systemType, DateTime timestamp, int userLimit, bool windowSwitchOpen) => (Deadband, DeviceId, DeviceType, FloorLimit, FrostTemperature,
-            MaxPreheat, OutputDelay, PumpDelay, RFSensorMode, ThermostatFailsafe, ThermostatVersion, SwitchingDifferential,
-            SwitchDelay, SystemType, Timestamp, UserLimit, WindowSwitchOpen) = (deadband, deviceId, deviceType, floorLimit, frostTemperature,
-            maxPreheat, outputDelay, pumpDelay, rFSensorMode, thermostatFailsafe, thermostatVersion, switchingDifferential,
-            switchDelay, systemType, timestamp, userLimit, windowSwitchOpen);
-
-        [JsonIgnore]
-        public string? Name { get; set; }
-
         [JsonPropertyName("DEADBAND")]
-        public int Deadband { get; }
+        public int Deadband { get; init; }
 
         [JsonPropertyName("DEVICE_ID")]
-        public int DeviceId { get; }
+        public int DeviceId { get; init; }
 
         [JsonPropertyName("DEVICE_TYPE")]
-        public DeviceType DeviceType { get; }
+        public DeviceType DeviceType { get; init; }
 
         [JsonPropertyName("FLOOR_LIMIT")]
-        public int FloorLimit { get; }
+        public int FloorLimit { get; init; }
 
         [JsonPropertyName("FROST_TEMP")]
-        public float FrostTemperature { get; }
+        public float FrostTemperature { get; init; }
 
         [JsonPropertyName("MAX_PREHEAT")]
-        public int MaxPreheat { get; }
+        public int MaxPreheat { get; init; }
 
         [JsonPropertyName("OUTPUT_DELAY")]
-        public int OutputDelay { get; }
+        public int OutputDelay { get; init; }
 
         [JsonPropertyName("PUMP_DELAY")]
-        public int PumpDelay { get; }
+        public int PumpDelay { get; init; }
 
         [JsonPropertyName("RF_SENSOR_MODE")]
-        public string? RFSensorMode { get; }
+        public string? RFSensorMode { get; init; }
 
         [JsonPropertyName("STAT_FAILSAFE")]
-        public int ThermostatFailsafe { get; }
+        public int ThermostatFailsafe { get; init; }
 
         [JsonPropertyName("STAT_VERSION")]
-        public int ThermostatVersion { get; }
+        public int ThermostatVersion { get; init; }
 
         [JsonPropertyName("SWITCHING DIFFERENTIAL")]
-        public int SwitchingDifferential { get; }
+        public int SwitchingDifferential { get; init; }
 
         [JsonPropertyName("SWITCH_DELAY")]
-        public int SwitchDelay { get; }
+        public int SwitchDelay { get; init; }
 
         [JsonPropertyName("SYSTEM_TYPE")]
-        public int SystemType { get; }
+        public int SystemType { get; init; }
 
         [JsonPropertyName("TIMESTAMP")]
-        public DateTime Timestamp { get; }
+        public DateTime Timestamp { get; init; }
 
         [JsonPropertyName("USER_LIMIT")]
-        public int UserLimit { get; }
+        public int UserLimit { get; init; }
 
         [JsonPropertyName("WINDOW_SWITCH_OPEN")]
-        public bool WindowSwitchOpen { get; }
+        public bool WindowSwitchOpen { get; init; }
     }
 }

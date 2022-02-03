@@ -17,7 +17,7 @@
         NeoAirWH = 9,
         Repeater = 10,
         NeoStatHC = 11,
-        NeoStatv2 = 12,
+        NeoStatV2 = 12,
         NeoAirV2 = 13,
         RemoteAirSensor = 14,
         NeoAirV2Combined = 15,

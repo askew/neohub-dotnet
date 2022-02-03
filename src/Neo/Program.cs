@@ -13,26 +13,36 @@ else
     return;
 }
 
-// Live Data
-LiveData? liveData = await neo.GetLiveData();
-if (liveData != null)
+var plugs = await neo.GetNeoPlugs();
+
+var tree = plugs["Tree"];
+
+if (tree.IsOn)
 {
-    Console.Out.WriteLine();
-    Console.Out.WriteLine($"Thermostats");
-    Console.Out.WriteLine($"   Id Name                              Set Actual Heating");
+    Console.Out.WriteLine(await tree.TurnOff());
+}
+else
+{
+    Console.Out.WriteLine(await tree.TurnOn());
+}
 
-    foreach (LiveDeviceData d in from dv in liveData.Devices where dv.Thermostat select dv)
-    {
-        string onOff = d.HeatOn ? "on" : "off";
-        Console.Out.WriteLine($"{d.DeviceId,5} {d.ZoneName,-30}{d.SetTemperature,7:0.0}{d.ActualTemp,7:0.0} {onOff}");
-    }
+// Live Data
+var stats = await neo.GetNeoStats();
+Console.Out.WriteLine();
+Console.Out.WriteLine($"Thermostats");
+Console.Out.WriteLine($"   Id Name                              Set Actual Heating");
 
-    Console.Out.WriteLine();
-    Console.Out.WriteLine($"Timer Switches");
-    Console.Out.WriteLine($"   Id Name                                On/Off");
-    foreach (LiveDeviceData d in from dv in liveData.Devices where !dv.Thermostat select dv)
-    {
-        string onOff = d.TimerOn ? "on" : "off";
-        Console.Out.WriteLine($"{d.DeviceId,5} {d.ZoneName,-30}{"",5} {onOff}");
-    }
+foreach (NeoStat stat in from kv in stats where kv.Value.IsThermostat select kv.Value)
+{
+    string onOff = stat.IsOn ? "on" : "off";
+    Console.Out.WriteLine($"{stat.DeviceId,5} {stat.Name,-30}{stat.SetTemperature,7:0.0}{stat.Temperature,7:0.0} {onOff}");
+}
+
+Console.Out.WriteLine();
+Console.Out.WriteLine($"Timer Switches");
+Console.Out.WriteLine($"   Id Name                                On/Off");
+foreach (NeoStat stat in from kv in stats where kv.Value.IsTimerSwitch select kv.Value)
+{
+    string onOff = stat.IsOn ? "on" : "off";
+    Console.Out.WriteLine($"{stat.DeviceId,5} {stat.Name,-30}      {onOff}");
 }
